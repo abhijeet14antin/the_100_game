@@ -14,33 +14,20 @@ const String DEFAULT_NAME = "NoName";
 late String gameCode;
 bool isLobbyPublic = false;
 
-class GameLobbyPage extends StatelessWidget {
+class GameLobbyPage extends StatefulWidget {
   GameLobbyPage(String tempGameCode, LobbyPrivacyEnum tempLobbyPrivacy) {
     gameCode = tempGameCode;
     // If lobby privacy is default, keep whatever is already present
     if (tempLobbyPrivacy != LobbyPrivacyEnum.DEFAULT) {
       isLobbyPublic = tempLobbyPrivacy == LobbyPrivacyEnum.PUBLIC;
     }
-    //playerUid = tempPlayerUid;
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: titleString,
-      home: LobbyView(),
-    );
-  }
-}
-
-class LobbyView extends StatefulWidget {
-  const LobbyView({Key? key}) : super(key: key);
 
   @override
   _LobbyViewState createState() => _LobbyViewState();
 }
 
-class _LobbyViewState extends State<LobbyView> with WidgetsBindingObserver {
+class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
   late BuildContext context;
   List<PlayerInfo> playersList = [];
   late String playerName = DEFAULT_NAME;

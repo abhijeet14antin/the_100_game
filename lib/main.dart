@@ -62,6 +62,6 @@ void main() async {
 
 // TODO: Save name on device?
 
-// Git test change
+// TODO: Center (make small) InputText and button in Lobby
 
-// Git branch check
+// TODO: Handle starter in single player game

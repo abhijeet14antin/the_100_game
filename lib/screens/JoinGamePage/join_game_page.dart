@@ -133,8 +133,10 @@ class _JoinViewState extends State<JoinView> {
     showDialog(
         context: context,
         builder: (BuildContext context) => SimpleDialog(
-              title: Text(enterGameCodeString),
-              titleTextStyle: defaultTextStyle,
+              title: Text(
+                enterGameCodeString,
+              ),
+              titleTextStyle: dialogTitleTextStyle,
               backgroundColor: primaryColor,
               children: [
                 Column(

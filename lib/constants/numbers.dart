@@ -1,6 +1,6 @@
 // Font sizes
-const double defaultFontSize = 24;
-const double largeFontSize = 32;
+const double defaultFontSize = 20;
+const double largeFontSize = 24;
 const double appBarFontSize = defaultFontSize;
 const double cardNumFontSize = defaultFontSize;
 const double textFieldLabelFontSize = defaultFontSize;

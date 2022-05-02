@@ -36,6 +36,11 @@ TextStyle boldLargeTextStyle = TextStyle(
   color: defaultTextColor,
   fontWeight: FontWeight.bold,
 );
+TextStyle dialogTitleTextStyle = TextStyle(
+  fontSize: defaultFontSize,
+  color: defaultTextColor,
+  fontWeight: FontWeight.bold,
+);
 
 var myButtonStyle = ElevatedButton.styleFrom(
   textStyle: const TextStyle(

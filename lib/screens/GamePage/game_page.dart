@@ -14,7 +14,7 @@ late int numPlayers;
 late String playerUid;
 late bool isGameStarter;
 
-class GamePage extends StatelessWidget {
+class GamePage extends StatefulWidget {
   GamePage(
     String tempGameCode,
     int tempNumPlayers,
@@ -28,22 +28,11 @@ class GamePage extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: titleString,
-      home: PlayerView(),
-    );
-  }
-}
-
-class PlayerView extends StatefulWidget {
-  const PlayerView({Key? key}) : super(key: key);
-
-  @override
   _PlayerViewState createState() => _PlayerViewState();
 }
 
-class _PlayerViewState extends State<PlayerView> {
+class _PlayerViewState extends State<GamePage> {
+  late BuildContext context;
   late Dimensions dimensions;
   late List<Widget> playerCardWidgets;
   late List<Widget> centerCardWidgets;
@@ -51,7 +40,6 @@ class _PlayerViewState extends State<PlayerView> {
   late GameState gameState;
   List<PlayerInfo> playerList = [];
   late List<int> thisPlayerHand;
-  // late int numMovesDone = 0;
   int minMovesPerTurn = INITIAL_MIN_MOVES_PER_TURN;
   int highlightedCardIndex = -1;
   List<Color> cardColors = [];
@@ -83,44 +71,49 @@ class _PlayerViewState extends State<PlayerView> {
 
   @override
   Widget build(BuildContext context) {
+    this.context = context;
     // Perform stuff that's dependent on context
     // Getting and calculating all dimensions for layout
     dimensions = Dimensions(context, numPlayers);
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: appBarColor,
-        title: Text(
-          gameAppBarString,
-          style: appBarTextStyle,
-        ),
-        actions: <Widget>[
-          IconButton(
-            onPressed: onRestartTapped,
-            icon: Icon(
-              Icons.restart_alt,
-              size: appBarIconSize,
+    return WillPopScope(
+        onWillPop: onExitPressed,
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: appBarColor,
+            title: Text(
+              gameAppBarString,
+              style: appBarTextStyle,
             ),
+            actions: <Widget>[
+              IconButton(
+                onPressed: onRestartPressed,
+                icon: Icon(
+                  Icons.restart_alt,
+                  size: appBarIconSize,
+                ),
+              ),
+              // TODO: bring back exit button, with proper navigator pop
+              // IconButton(
+              //   onPressed: onExitPressed,
+              //   icon: Icon(
+              //     Icons.close,
+              //     size: appBarIconSize,
+              //   ),
+              // ),
+              // TODO: do we even need this refresh button
+              // IconButton(
+              //   onPressed: onDonePressed,
+              //   icon: Icon(
+              //     Icons.done,
+              //     size: appBarIconSize,
+              //   ),
+              // ),
+            ],
           ),
-          IconButton(
-            onPressed: onCloseTapped,
-            icon: Icon(
-              Icons.close,
-              size: appBarIconSize,
-            ),
-          ),
-          IconButton(
-            onPressed: onDoneTapped,
-            icon: Icon(
-              Icons.done,
-              size: appBarIconSize,
-            ),
-          ),
-        ],
-      ),
-      body: getGamePage(),
-      backgroundColor: appBackgroundColor,
-    );
+          body: getGamePage(),
+          backgroundColor: appBackgroundColor,
+        ));
   }
 
   void generateCardColors() {
@@ -144,7 +137,7 @@ class _PlayerViewState extends State<PlayerView> {
     Color cardBorderColor,
   ) {
     return InkWell(
-      onTap: () => onCardTapped(callerType, index),
+      onTap: () => onCardPressed(callerType, index),
       child: Card(
         shape: RoundedRectangleBorder(
           side: BorderSide(
@@ -172,7 +165,7 @@ class _PlayerViewState extends State<PlayerView> {
     );
   }
 
-  void onDoneTapped() {
+  void onDonePressed() {
     if (playerUid != gameState.whoseTurn) {
       flashTextBox();
     } else if (gameState.numMovesDone < minMovesPerTurn) {
@@ -194,24 +187,18 @@ class _PlayerViewState extends State<PlayerView> {
   }
 
   // Handles restart game option
-  void onRestartTapped() {
+  void onRestartPressed() {
     // TODO: Dialog
     // TODO: Handle more things here
     // gameState.restartGameState();
     // gameDatabaseService.clearGameStateFromDB();
   }
 
-  // Handles one player trying to leave the game
-  void onCloseTapped() {
-    // TODO: Dialog
-    // TODO: go back to lobby page to restart game?
-  }
-
   // Handles when each card is pressed
-  void onCardTapped(CardTypeEnum callerType, int tappedIndex) {
+  void onCardPressed(CardTypeEnum callerType, int pressedIndex) {
     // If a player card is pressed
     if (callerType == CardTypeEnum.THIS_PLAYER) {
-      onPlayerCardTapped(tappedIndex);
+      onPlayerCardpressed(pressedIndex);
     } else if (callerType == CardTypeEnum.CENTER_DECK) {
       print("whoseTurn = ${gameState.whoseTurn}");
       if (gameState.whoseTurn == playerUid) {
@@ -219,7 +206,7 @@ class _PlayerViewState extends State<PlayerView> {
           // No card selected
           flashAllPlayerCards();
         } else {
-          validateAndPlayCard(tappedIndex);
+          validateAndPlayCard(pressedIndex);
         }
       } else {
         // Visually highlight whose turn it is
@@ -230,15 +217,15 @@ class _PlayerViewState extends State<PlayerView> {
     }
   }
 
-  // Changes highlighting of cards on player card tapped
-  void onPlayerCardTapped(int tappedIndex) {
+  // Changes highlighting of cards on player card pressed
+  void onPlayerCardpressed(int pressedIndex) {
     setState(() {
       // Highlighting logic works only if cards are not duplicated
       // Unhighlight/highlight logic
-      if (highlightedCardIndex == tappedIndex) {
+      if (highlightedCardIndex == pressedIndex) {
         highlightedCardIndex = -1;
       } else {
-        highlightedCardIndex = tappedIndex;
+        highlightedCardIndex = pressedIndex;
         allPlayerCardsBorderColor = defaultCardBorderColor;
       }
     });
@@ -338,7 +325,8 @@ class _PlayerViewState extends State<PlayerView> {
     bool hasLost;
     // If player hand is empty, or has played minimum number of moves in their
     // turn, don't evaluate lose condition
-    if (thisPlayerHand.length == 0 || gameState.numMovesDone >= minMovesPerTurn) {
+    if (thisPlayerHand.length == 0 ||
+        gameState.numMovesDone >= minMovesPerTurn) {
       hasLost = false;
     } else {
       // If no possible moves for current player
@@ -384,7 +372,8 @@ class _PlayerViewState extends State<PlayerView> {
             ),
             // Displays min number of moves remaining for this player
             Text(
-              minMovesLeftString + (minMovesPerTurn - gameState.numMovesDone).toString(),
+              minMovesLeftString +
+                  (minMovesPerTurn - gameState.numMovesDone).toString(),
               style: defaultTextStyleWithColor(cardsRemainingTextBoxColor),
             ),
           ],
@@ -785,5 +774,49 @@ class _PlayerViewState extends State<PlayerView> {
         await Future.delayed(Duration(milliseconds: flashOffTimeMillis));
       }
     }
+  }
+
+  // Handle exit icon / back gesture
+  Future<bool> onExitPressed() async {
+    print("onExitPressed: called");
+    return (await showDialog(
+          context: context,
+          builder: (context) => new AlertDialog(
+            title: Text(
+              areYouSureString,
+              style: defaultTextStyle,
+            ),
+            content: Text(
+              noReturnString,
+              style: defaultTextStyle,
+            ),
+            titleTextStyle: dialogTitleTextStyle,
+            backgroundColor: primaryColor,
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  noString,
+                  style: defaultTextStyle,
+                ),
+              ),
+              TextButton(
+                onPressed: onExitConfirmed,
+                child: Text(
+                  yesString,
+                  style: defaultTextStyle,
+                ),
+              ),
+            ],
+          ),
+        )) ??
+        false;
+  }
+
+  // When exit is confirmed
+  void onExitConfirmed() {
+    print("onExitConfirmed: started");
+    // TODO: update entire game state in DB
+    Navigator.of(context).pop(true);
   }
 }

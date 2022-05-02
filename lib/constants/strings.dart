@@ -1,5 +1,9 @@
 String titleString = "The Game";
 
+// Generic String
+String yesString = "Yes";
+String noString = "No";
+
 // Join game page
 String joinGameAppBarString = "Join a Game!";
 String nameTextFieldLabelString = "Enter your (fake) name";
@@ -32,3 +36,8 @@ String minMovesLeftString = "Minimum moves remaining: ";
 String choosingStarterString =
     "If you have great starting cards, press the button!";
 String starterButtonString = "I want to start";
+
+// Exit dialog
+String areYouSureString = "Are you sure?";
+String noReturnString =
+    "Going back will end current game for all players and take you back to the lobby";
