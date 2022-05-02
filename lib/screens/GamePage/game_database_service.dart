@@ -5,6 +5,7 @@ import 'package:the_game/data/models.dart';
 import 'package:the_game/data/types.dart';
 
 class GameDatabaseService {
+  late DatabaseReference gameRef;
   late String _gameCode;
   late String _playerUid;
   late Function _getPlayerListCallback;
@@ -40,6 +41,7 @@ class GameDatabaseService {
 
   // Does some initial setup interactions with DB
   void _performInitialDBOperations() async {
+    gameRef = await FirebaseDatabase.instance.ref("games/$_gameCode");
     await updateGameStatus(GameStatusEnum.SETUP);
     await _getPlayerList();
     await _setUpListeners();
@@ -58,9 +60,7 @@ class GameDatabaseService {
   // Set up listener for change in whose turn
   Future<void> _setUpWhoseTurnListener() async {
     var tempWhoseTurn;
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode/whose_turn");
-    gameRef.onValue.listen((DatabaseEvent event) {
+    gameRef.child("whose_turn").onValue.listen((DatabaseEvent event) {
       tempWhoseTurn = event.snapshot.value;
       print(
           "_setUpWhoseTurnListener: Whose Turn changed to $tempWhoseTurn in DB");
@@ -70,12 +70,10 @@ class GameDatabaseService {
     });
   }
 
-  // Set up listener for change in center deck
+  // Set up listener for change in center decks
   Future<void> _setUpCenterDecksListener() async {
     var tempCenterDecks;
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode/center_decks");
-    gameRef.onValue.listen((DatabaseEvent event) {
+    gameRef.child("center_decks").onValue.listen((DatabaseEvent event) {
       print("_setUpCenterDecksListener: isWriting = ${isWriting}");
       tempCenterDecks = event.snapshot.value;
       if (!isWriting && tempCenterDecks != null) {
@@ -89,9 +87,7 @@ class GameDatabaseService {
   // Set up listener for game status
   Future<void> _setUpGameStatusListener() async {
     var tempStatus;
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode/game_status");
-    gameRef.onValue.listen((DatabaseEvent event) {
+    gameRef.child("game_status").onValue.listen((DatabaseEvent event) {
       tempStatus = event.snapshot.value;
       print("game state changed to $tempStatus");
       if (!isWriting && tempStatus != null) {
@@ -103,9 +99,7 @@ class GameDatabaseService {
   // Set up listener for numMovesDone
   Future<void> _setUpNumMovesDoneListener() async {
     var tempNumMovesDone;
-    DatabaseReference numMovesDoneRef =
-    FirebaseDatabase.instance.ref("games/$_gameCode/num_moves_done");
-    numMovesDoneRef.onValue.listen((DatabaseEvent event) {
+    gameRef.child("num_moves_done").onValue.listen((DatabaseEvent event) {
       tempNumMovesDone = event.snapshot.value;
       print("numMovesDone changed to $tempNumMovesDone");
       if (!isWriting && tempNumMovesDone != null) {
@@ -117,17 +111,13 @@ class GameDatabaseService {
   // Updates game state in DB
   Future<void> updateGameStatus(GameStatusEnum status) async {
     isWriting = true;
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode/game_status");
-    await gameRef.set(status.index);
+    await gameRef.child("game_status").set(status.index);
     isWriting = false;
   }
 
   // Fetches player list from DB
   Future<void> _getPlayerList() async {
-    DatabaseReference playersRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode/players");
-    var event = await playersRef.once(DatabaseEventType.value);
+    var event = await gameRef.child("players").once(DatabaseEventType.value);
     var tempPlayersList = Map.from(event.snapshot.value as Map);
     tempPlayersList.forEach((key, value) {
       PlayerInfo tempPlayerInfo = PlayerInfo();
@@ -142,9 +132,6 @@ class GameDatabaseService {
   Future<void> writeGameState(GameState gameState) async {
     isWriting = true;
     print("writeGameState: isWriting at start = ${isWriting}");
-
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode");
 
     // Writing player hands to DB
     for (int playerIdx = 0;
@@ -188,8 +175,6 @@ class GameDatabaseService {
 
   // Reads entire game state from DB
   Future<void> readGameState(GameState gameState) async {
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode");
 
     // Reading player hands from DB
     print("readGameState: reading player hands from DB");
@@ -253,10 +238,8 @@ class GameDatabaseService {
 
   // Function to attempt to start game
   Future<bool> tryStartGame(String tempUid) async {
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode/whose_turn");
     TransactionResult result =
-        await gameRef.runTransaction((Object? whoseTurnFromDb) {
+        await gameRef.child("whose_turn").runTransaction((Object? whoseTurnFromDb) {
       print("whoseTurnFromDb type = ${whoseTurnFromDb.runtimeType}");
       // If no one else has started the game
       if (whoseTurnFromDb == null) {
@@ -279,14 +262,11 @@ class GameDatabaseService {
   // Function to be called wen game is abandoned by any player
   void clearGameStateFromDB() {
     isWriting = true;
-
-    DatabaseReference gameRef =
-        FirebaseDatabase.instance.ref("games/$_gameCode");
     gameRef.child("center_decks").remove();
     gameRef.child("draw_pile").remove();
     gameRef.child("players_hands").remove();
     gameRef.child("whose_turn").remove();
-
+    gameRef.child("num_moves_done").remove();
     isWriting = false;
   }
 

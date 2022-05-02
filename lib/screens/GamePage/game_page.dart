@@ -86,13 +86,14 @@ class _PlayerViewState extends State<GamePage> {
               style: appBarTextStyle,
             ),
             actions: <Widget>[
-              IconButton(
-                onPressed: onRestartPressed,
-                icon: Icon(
-                  Icons.restart_alt,
-                  size: appBarIconSize,
-                ),
-              ),
+              // TODO: do we even need this refresh button
+              // IconButton(
+              //   onPressed: onRestartPressed,
+              //   icon: Icon(
+              //     Icons.restart_alt,
+              //     size: appBarIconSize,
+              //   ),
+              // ),
               // TODO: bring back exit button, with proper navigator pop
               // IconButton(
               //   onPressed: onExitPressed,
@@ -101,14 +102,13 @@ class _PlayerViewState extends State<GamePage> {
               //     size: appBarIconSize,
               //   ),
               // ),
-              // TODO: do we even need this refresh button
-              // IconButton(
-              //   onPressed: onDonePressed,
-              //   icon: Icon(
-              //     Icons.done,
-              //     size: appBarIconSize,
-              //   ),
-              // ),
+              IconButton(
+                onPressed: onDonePressed,
+                icon: Icon(
+                  Icons.done,
+                  size: appBarIconSize,
+                ),
+              ),
             ],
           ),
           body: getGamePage(),
@@ -657,8 +657,10 @@ class _PlayerViewState extends State<GamePage> {
   // DB callback when turn changes
   void onTurnChanged(String whoseTurn) {
     setState(() {
-      gameDatabaseService.readGameState(gameState);
       gameState.whoseTurn = whoseTurn;
+    });
+    setState(() {
+      gameDatabaseService.readGameState(gameState);
       if (whoseTurn == playerUid) {
         // gameState.numMovesDone = 0;
         print("It's my turn now");
@@ -691,6 +693,9 @@ class _PlayerViewState extends State<GamePage> {
     setState(() {
       gameState.gameStatus = gameStatus;
     });
+    if (gameStatus == GameStatusEnum.WAITING) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   // When numMovesDone changes in DB
@@ -816,6 +821,8 @@ class _PlayerViewState extends State<GamePage> {
   // When exit is confirmed
   void onExitConfirmed() {
     print("onExitConfirmed: started");
+    gameDatabaseService.clearGameStateFromDB();
+    gameDatabaseService.updateGameStatus(GameStatusEnum.WAITING);
     // TODO: update entire game state in DB
     Navigator.of(context).pop(true);
   }
