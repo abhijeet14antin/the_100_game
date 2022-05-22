@@ -86,7 +86,7 @@ class _PlayerViewState extends State<GamePage> {
               style: appBarTextStyle,
             ),
             actions: <Widget>[
-              // TODO: do we even need this refresh button
+              // TODO: do we even need this refresh button?
               // IconButton(
               //   onPressed: onRestartPressed,
               //   icon: Icon(
@@ -198,7 +198,7 @@ class _PlayerViewState extends State<GamePage> {
   void onCardPressed(CardTypeEnum callerType, int pressedIndex) {
     // If a player card is pressed
     if (callerType == CardTypeEnum.THIS_PLAYER) {
-      onPlayerCardpressed(pressedIndex);
+      onPlayerCardPressed(pressedIndex);
     } else if (callerType == CardTypeEnum.CENTER_DECK) {
       print("whoseTurn = ${gameState.whoseTurn}");
       if (gameState.whoseTurn == playerUid) {
@@ -218,7 +218,7 @@ class _PlayerViewState extends State<GamePage> {
   }
 
   // Changes highlighting of cards on player card pressed
-  void onPlayerCardpressed(int pressedIndex) {
+  void onPlayerCardPressed(int pressedIndex) {
     setState(() {
       // Highlighting logic works only if cards are not duplicated
       // Unhighlight/highlight logic
@@ -248,17 +248,17 @@ class _PlayerViewState extends State<GamePage> {
       });
       // Updating game state with new player hand
       writeThisPlayerHandToGameState();
+      // Incrementing moves done in this turn, stop if min required moves are played
+      if (gameState.numMovesDone < minMovesPerTurn) {
+        gameState.numMovesDone++;
+        gameDatabaseService.updateNumMovesDone(gameState.numMovesDone);
+      }
       // Check if game ended
       checkGameEndConditions();
       // Writing game state to DB
       gameDatabaseService.writeGameState(gameState);
       // Removing card highlight
       highlightedCardIndex = -1;
-      // Incrementing moves done in this turn, stop if min required moves are played
-      if (gameState.numMovesDone < minMovesPerTurn) {
-        gameState.numMovesDone++;
-        gameDatabaseService.updateNumMovesDone(gameState.numMovesDone);
-      }
     } else {
       print("playing ${selectedNum} on pile $pileIndex is an invalid move");
       flashCardBorder(errorColor, pileIndex);
