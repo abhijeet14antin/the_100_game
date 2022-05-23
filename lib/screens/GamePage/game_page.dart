@@ -349,6 +349,11 @@ class _PlayerViewState extends State<GamePage> {
     centerCardWidgets = _generateCenterCards();
     playerCardWidgets = _generatePlayerCards();
 
+    // Handling whose turn in case of 1 player game
+    if (numPlayers == 1) {
+      gameState.whoseTurn = playerUid;
+    }
+
     // Placing them in a view
     return Column(
       children: [
@@ -370,12 +375,6 @@ class _PlayerViewState extends State<GamePage> {
               margin: const EdgeInsets.all(textBoxMargin),
               alignment: Alignment.center,
             ),
-            // Displays min number of moves remaining for this player
-            Text(
-              minMovesLeftString +
-                  (minMovesPerTurn - gameState.numMovesDone).toString(),
-              style: defaultTextStyleWithColor(cardsRemainingTextBoxColor),
-            ),
           ],
           crossAxisAlignment: CrossAxisAlignment.center,
         ),
@@ -388,7 +387,7 @@ class _PlayerViewState extends State<GamePage> {
 
   // Gets the choose starter button if needed, else returns empty view
   Widget getStartingButtonIfNeeded() {
-    if (gameState.gameStatus == GameStatusEnum.SETUP) {
+    if (gameState.gameStatus == GameStatusEnum.SETUP && numPlayers != 1) {
       return ElevatedButton(
         onPressed: () => onThisPlayerStarterPressed(),
         child: Text(starterButtonString),
@@ -422,7 +421,8 @@ class _PlayerViewState extends State<GamePage> {
       returnString = winString;
     } else if (gameState.gameStatus == GameStatusEnum.LOST) {
       returnString = loseString;
-    } else if (gameState.gameStatus == GameStatusEnum.SETUP) {
+    } else if (gameState.gameStatus == GameStatusEnum.SETUP &&
+        numPlayers != 1) {
       returnString = choosingStarterString;
     } else if (gameState.gameStatus == GameStatusEnum.PLAYING) {
       for (var item in playerList) {
@@ -518,6 +518,12 @@ class _PlayerViewState extends State<GamePage> {
   Widget _getCenterDecksRow() {
     return Column(
       children: [
+        // Displays min number of moves remaining for this player
+        Text(
+          minMovesLeftString +
+              (minMovesPerTurn - gameState.numMovesDone).toString(),
+          style: defaultTextStyleWithColor(cardsRemainingTextBoxColor),
+        ),
         // Up and down arrow icons
         Row(
           children: [

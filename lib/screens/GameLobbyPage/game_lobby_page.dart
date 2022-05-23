@@ -142,12 +142,12 @@ class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
             ),
           ),
           Container(
-            child: ElevatedButton(
+            child:
+            ElevatedButton(
               onPressed: () => onDealPressed(isPlayerStarter: true),
               child: Text(dealCardsButtonString),
               style: myButtonStyle,
             ),
-            margin: const EdgeInsets.all((joinPageMargin)),
           ),
           Container(
             child: Column(
@@ -186,9 +186,11 @@ class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
         playerName = name;
         if (playerName == "") {
           playerName = DEFAULT_NAME;
+          prefs.remove("playerName");
         }
-        //controller.text = playerName;
-        prefs.setString("playerName", playerName);
+        else {
+          prefs.setString("playerName", playerName);
+        }
       });
     }
     lobbyDatabaseService.updatePlayerNameInDB(playerName);
