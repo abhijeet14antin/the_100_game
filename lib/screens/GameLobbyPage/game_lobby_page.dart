@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:english_words/english_words.dart';
 import 'package:the_game/constants/colors.dart';
 import 'package:the_game/constants/strings.dart';
 import 'package:the_game/constants/numbers.dart';
@@ -30,11 +32,22 @@ class GameLobbyPage extends StatefulWidget {
 class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
   late BuildContext context;
   List<PlayerInfo> playersList = [];
-  late String playerName = DEFAULT_NAME;
+  late String playerName = "";
   late LobbyDatabaseService lobbyDatabaseService;
   bool gameStarted = false;
+  var controller = TextEditingController();
 
   _LobbyViewState() {
+    _performSetup();
+  }
+
+  // Does initial setup stuff, handles waiting/synchronization
+  void _performSetup() async {
+    await _getPlayerName();
+
+    controller.text = playerName;
+    controller.selection =
+        TextSelection(baseOffset: 0, extentOffset: playerName.length);
     lobbyDatabaseService = LobbyDatabaseService(
       playerUidGeneratedCallback: onPlayerUidGenerated,
       playerAddedCallback: onPlayerAdded,
@@ -101,6 +114,9 @@ class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
           Container(
             child: TextField(
               autofocus: true,
+              controller: controller,
+              onTap: () => controller.selection =
+                  TextSelection(baseOffset: 0, extentOffset: playerName.length),
               decoration: InputDecoration(
                 focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: textFieldBorderColor),
@@ -126,12 +142,12 @@ class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
             ),
           ),
           Container(
-            child: ElevatedButton(
+            child:
+            ElevatedButton(
               onPressed: () => onDealPressed(isPlayerStarter: true),
               child: Text(dealCardsButtonString),
               style: myButtonStyle,
             ),
-            margin: const EdgeInsets.all((joinPageMargin)),
           ),
           Container(
             child: Column(
@@ -164,11 +180,16 @@ class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
 
   // Function called when player changes name
   void _updatePlayerName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
     if (this.mounted) {
       setState(() {
         playerName = name;
         if (playerName == "") {
           playerName = DEFAULT_NAME;
+          prefs.remove("playerName");
+        }
+        else {
+          prefs.setString("playerName", playerName);
         }
       });
     }
@@ -254,6 +275,14 @@ class _LobbyViewState extends State<GameLobbyPage> with WidgetsBindingObserver {
   // Copies game code to clipboard
   void copyGameCodeToClipboard() {
     Clipboard.setData(ClipboardData(text: gameCode));
+  }
+
+  // Check if player has a local name, if not, generate nice random name
+  Future<void> _getPlayerName() async {
+    final prefs = await SharedPreferences.getInstance();
+    var tempName =
+        prefs.getString("playerName") ?? WordPair.random().asPascalCase;
+    playerName = tempName;
   }
 
   // Clean up player if app is closed

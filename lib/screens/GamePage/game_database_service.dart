@@ -42,7 +42,7 @@ class GameDatabaseService {
   // Does some initial setup interactions with DB
   void _performInitialDBOperations() async {
     gameRef = await FirebaseDatabase.instance.ref("games/$_gameCode");
-    await updateGameStatus(GameStatusEnum.SETUP);
+    await updateGameStatusInDB(GameStatusEnum.SETUP);
     await _getPlayerList();
     await _setUpListeners();
   }
@@ -109,7 +109,7 @@ class GameDatabaseService {
   }
 
   // Updates game state in DB
-  Future<void> updateGameStatus(GameStatusEnum status) async {
+  Future<void> updateGameStatusInDB(GameStatusEnum status) async {
     isWriting = true;
     await gameRef.child("game_status").set(status.index);
     isWriting = false;
@@ -175,7 +175,6 @@ class GameDatabaseService {
 
   // Reads entire game state from DB
   Future<void> readGameState(GameState gameState) async {
-
     // Reading player hands from DB
     print("readGameState: reading player hands from DB");
     gameState.playersHands = [];
@@ -238,8 +237,9 @@ class GameDatabaseService {
 
   // Function to attempt to start game
   Future<bool> tryStartGame(String tempUid) async {
-    TransactionResult result =
-        await gameRef.child("whose_turn").runTransaction((Object? whoseTurnFromDb) {
+    TransactionResult result = await gameRef
+        .child("whose_turn")
+        .runTransaction((Object? whoseTurnFromDb) {
       print("whoseTurnFromDb type = ${whoseTurnFromDb.runtimeType}");
       // If no one else has started the game
       if (whoseTurnFromDb == null) {
@@ -259,6 +259,42 @@ class GameDatabaseService {
     return result.committed;
   }
 
+  // Updates whose turn in DB
+  void updateWhoseTurnInDB(String whoseTurn) {
+    gameRef.child("whose_turn").set(whoseTurn);
+  }
+
+  // Removes cards from draw pile
+  void removeCardFromDrawPileInDB(num numCards, num drawPileLength) {
+    while (numCards > 0) {
+      print(
+          "removeCardFromDrawPile: removing at index: ${drawPileLength - 1 + numCards}");
+      gameRef
+          .child("draw_pile")
+          .child("${drawPileLength - 1 + numCards}")
+          .remove();
+      numCards--;
+    }
+  }
+
+  // Updates this player hand in DB
+  void updateThisPlayerHandInDB(List<int> tempPlayerHand) async {
+    // If player hand length is zero, write their hand as "done"
+    if (tempPlayerHand.length == 0) {
+      await gameRef.child("players_hands").child(_playerUid).set("done");
+    } else {
+      await gameRef
+          .child("players_hands")
+          .child(_playerUid)
+          .set(tempPlayerHand);
+    }
+  }
+
+  // Updates a single center deck in DB
+  void updateCenterDeckInDB(num index, num value) async {
+    await gameRef.child("center_decks").child("$index").set(value);
+  }
+
   // Function to be called wen game is abandoned by any player
   void clearGameStateFromDB() {
     isWriting = true;
@@ -271,7 +307,7 @@ class GameDatabaseService {
   }
 
   // Updates numMovesDone in DB
-  void updateNumMovesDone(int newNumMovesDone) async {
+  void updateNumMovesDoneInDB(int newNumMovesDone) async {
     DatabaseReference numMovesDoneRef =
         FirebaseDatabase.instance.ref("games/$_gameCode/num_moves_done");
     await numMovesDoneRef.set(newNumMovesDone);

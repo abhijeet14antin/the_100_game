@@ -86,7 +86,7 @@ class _PlayerViewState extends State<GamePage> {
               style: appBarTextStyle,
             ),
             actions: <Widget>[
-              // TODO: do we even need this refresh button
+              // TODO: do we even need this refresh button?
               // IconButton(
               //   onPressed: onRestartPressed,
               //   icon: Icon(
@@ -174,15 +174,14 @@ class _PlayerViewState extends State<GamePage> {
     } else {
       print("$playerUid turn complete");
       gameState.updateNumMovesDone(0);
-      gameDatabaseService.updateNumMovesDone(gameState.numMovesDone);
+      gameDatabaseService.updateNumMovesDoneInDB(gameState.numMovesDone);
       gameState.updateWhoseTurn();
+      gameDatabaseService.updateWhoseTurnInDB(gameState.whoseTurn);
       // Updating game state with new player hand
       setState(() {
         drawCardsAtEndOfTurn();
         writeThisPlayerHandToGameState();
       });
-      // gameDatabaseInteraction.updateWhoseTurn(gameState.whoseTurn);
-      gameDatabaseService.writeGameState(gameState);
     }
   }
 
@@ -198,7 +197,7 @@ class _PlayerViewState extends State<GamePage> {
   void onCardPressed(CardTypeEnum callerType, int pressedIndex) {
     // If a player card is pressed
     if (callerType == CardTypeEnum.THIS_PLAYER) {
-      onPlayerCardpressed(pressedIndex);
+      onPlayerCardPressed(pressedIndex);
     } else if (callerType == CardTypeEnum.CENTER_DECK) {
       print("whoseTurn = ${gameState.whoseTurn}");
       if (gameState.whoseTurn == playerUid) {
@@ -218,7 +217,7 @@ class _PlayerViewState extends State<GamePage> {
   }
 
   // Changes highlighting of cards on player card pressed
-  void onPlayerCardpressed(int pressedIndex) {
+  void onPlayerCardPressed(int pressedIndex) {
     setState(() {
       // Highlighting logic works only if cards are not duplicated
       // Unhighlight/highlight logic
@@ -248,17 +247,19 @@ class _PlayerViewState extends State<GamePage> {
       });
       // Updating game state with new player hand
       writeThisPlayerHandToGameState();
-      // Check if game ended
-      checkGameEndConditions();
-      // Writing game state to DB
-      gameDatabaseService.writeGameState(gameState);
-      // Removing card highlight
-      highlightedCardIndex = -1;
       // Incrementing moves done in this turn, stop if min required moves are played
       if (gameState.numMovesDone < minMovesPerTurn) {
         gameState.numMovesDone++;
-        gameDatabaseService.updateNumMovesDone(gameState.numMovesDone);
+        gameDatabaseService.updateNumMovesDoneInDB(gameState.numMovesDone);
       }
+      // Check if game ended
+      checkGameEndConditions();
+      // Writing changes to DB
+      gameDatabaseService.updateCenterDeckInDB(pileIndex, selectedNum);
+      gameDatabaseService.updateThisPlayerHandInDB(thisPlayerHand);
+
+      // Removing card highlight
+      highlightedCardIndex = -1;
     } else {
       print("playing ${selectedNum} on pile $pileIndex is an invalid move");
       flashCardBorder(errorColor, pileIndex);
@@ -267,6 +268,7 @@ class _PlayerViewState extends State<GamePage> {
 
   // Move cards from draw pile to player's hand at end of turn
   void drawCardsAtEndOfTurn() {
+    num numCardsToRemoveFromDrawPile = 0;
     for (int i = thisPlayerHand.length; i < gameState.handLimit; i++) {
       if (gameState.drawPile.length == 0) {
         minMovesPerTurn = END_MIN_MOVES_PER_TURN;
@@ -278,6 +280,7 @@ class _PlayerViewState extends State<GamePage> {
       }
       thisPlayerHand.add(gameState.drawPile.last);
       gameState.drawPile.removeLast();
+      numCardsToRemoveFromDrawPile++;
     }
     // Handle case where this player finishes and no cards in draw pile
     if (thisPlayerHand.length == 0 && gameState.drawPile == 0) {
@@ -285,8 +288,10 @@ class _PlayerViewState extends State<GamePage> {
         gameState.markPlayerAsDone(playerUid);
       });
     }
-    gameDatabaseService.writeGameState(gameState);
+    gameDatabaseService.removeCardFromDrawPileInDB(
+        numCardsToRemoveFromDrawPile, gameState.drawPile.length);
     thisPlayerHand.sort();
+    gameDatabaseService.updateThisPlayerHandInDB(thisPlayerHand);
     print(
         "drawCardsAtEndOfTurn: drawPile at end of turn = ${gameState.drawPile}");
     print(
@@ -296,10 +301,10 @@ class _PlayerViewState extends State<GamePage> {
   // Check if game ended, and write status to DB if yes
   void checkGameEndConditions() {
     if (isGameWon()) {
-      gameDatabaseService.updateGameStatus(GameStatusEnum.WON);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.WON);
       gameState.gameStatus = GameStatusEnum.WON;
     } else if (isGameLost()) {
-      gameDatabaseService.updateGameStatus(GameStatusEnum.LOST);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.LOST);
       gameState.gameStatus = GameStatusEnum.LOST;
     }
   }
@@ -349,6 +354,11 @@ class _PlayerViewState extends State<GamePage> {
     centerCardWidgets = _generateCenterCards();
     playerCardWidgets = _generatePlayerCards();
 
+    // Handling whose turn in case of 1 player game
+    if (numPlayers == 1) {
+      gameState.whoseTurn = playerUid;
+    }
+
     // Placing them in a view
     return Column(
       children: [
@@ -370,12 +380,6 @@ class _PlayerViewState extends State<GamePage> {
               margin: const EdgeInsets.all(textBoxMargin),
               alignment: Alignment.center,
             ),
-            // Displays min number of moves remaining for this player
-            Text(
-              minMovesLeftString +
-                  (minMovesPerTurn - gameState.numMovesDone).toString(),
-              style: defaultTextStyleWithColor(cardsRemainingTextBoxColor),
-            ),
           ],
           crossAxisAlignment: CrossAxisAlignment.center,
         ),
@@ -388,7 +392,7 @@ class _PlayerViewState extends State<GamePage> {
 
   // Gets the choose starter button if needed, else returns empty view
   Widget getStartingButtonIfNeeded() {
-    if (gameState.gameStatus == GameStatusEnum.SETUP) {
+    if (gameState.gameStatus == GameStatusEnum.SETUP && numPlayers != 1) {
       return ElevatedButton(
         onPressed: () => onThisPlayerStarterPressed(),
         child: Text(starterButtonString),
@@ -408,8 +412,8 @@ class _PlayerViewState extends State<GamePage> {
         gameState.whoseTurn = playerUid;
         gameState.gameStatus = GameStatusEnum.PLAYING;
       });
-      gameDatabaseService.writeGameState(gameState);
-      gameDatabaseService.updateGameStatus(GameStatusEnum.PLAYING);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.PLAYING);
+      gameDatabaseService.updateWhoseTurnInDB(playerUid);
     } else {
       print("onThisPlayerStarterPressed: unsuccessful in starting game");
     }
@@ -422,7 +426,8 @@ class _PlayerViewState extends State<GamePage> {
       returnString = winString;
     } else if (gameState.gameStatus == GameStatusEnum.LOST) {
       returnString = loseString;
-    } else if (gameState.gameStatus == GameStatusEnum.SETUP) {
+    } else if (gameState.gameStatus == GameStatusEnum.SETUP &&
+        numPlayers != 1) {
       returnString = choosingStarterString;
     } else if (gameState.gameStatus == GameStatusEnum.PLAYING) {
       for (var item in playerList) {
@@ -518,6 +523,12 @@ class _PlayerViewState extends State<GamePage> {
   Widget _getCenterDecksRow() {
     return Column(
       children: [
+        // Displays min number of moves remaining for this player
+        Text(
+          minMovesLeftString +
+              (minMovesPerTurn - gameState.numMovesDone).toString(),
+          style: defaultTextStyleWithColor(cardsRemainingTextBoxColor),
+        ),
         // Up and down arrow icons
         Row(
           children: [
@@ -668,7 +679,7 @@ class _PlayerViewState extends State<GamePage> {
     });
     // Check if game is over (new player has no valid moves)
     if (whoseTurn == playerUid && isGameLost()) {
-      gameDatabaseService.updateGameStatus(GameStatusEnum.LOST);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.LOST);
     }
   }
 
@@ -822,7 +833,7 @@ class _PlayerViewState extends State<GamePage> {
   void onExitConfirmed() {
     print("onExitConfirmed: started");
     gameDatabaseService.clearGameStateFromDB();
-    gameDatabaseService.updateGameStatus(GameStatusEnum.WAITING);
+    gameDatabaseService.updateGameStatusInDB(GameStatusEnum.WAITING);
     // TODO: update entire game state in DB
     Navigator.of(context).pop(true);
   }
