@@ -174,15 +174,14 @@ class _PlayerViewState extends State<GamePage> {
     } else {
       print("$playerUid turn complete");
       gameState.updateNumMovesDone(0);
-      gameDatabaseService.updateNumMovesDone(gameState.numMovesDone);
+      gameDatabaseService.updateNumMovesDoneInDB(gameState.numMovesDone);
       gameState.updateWhoseTurn();
+      gameDatabaseService.updateWhoseTurnInDB(gameState.whoseTurn);
       // Updating game state with new player hand
       setState(() {
         drawCardsAtEndOfTurn();
         writeThisPlayerHandToGameState();
       });
-      // gameDatabaseInteraction.updateWhoseTurn(gameState.whoseTurn);
-      gameDatabaseService.writeGameState(gameState);
     }
   }
 
@@ -251,12 +250,14 @@ class _PlayerViewState extends State<GamePage> {
       // Incrementing moves done in this turn, stop if min required moves are played
       if (gameState.numMovesDone < minMovesPerTurn) {
         gameState.numMovesDone++;
-        gameDatabaseService.updateNumMovesDone(gameState.numMovesDone);
+        gameDatabaseService.updateNumMovesDoneInDB(gameState.numMovesDone);
       }
       // Check if game ended
       checkGameEndConditions();
-      // Writing game state to DB
-      gameDatabaseService.writeGameState(gameState);
+      // Writing changes to DB
+      gameDatabaseService.updateCenterDeckInDB(pileIndex, selectedNum);
+      gameDatabaseService.updateThisPlayerHandInDB(thisPlayerHand);
+
       // Removing card highlight
       highlightedCardIndex = -1;
     } else {
@@ -267,6 +268,7 @@ class _PlayerViewState extends State<GamePage> {
 
   // Move cards from draw pile to player's hand at end of turn
   void drawCardsAtEndOfTurn() {
+    num numCardsToRemoveFromDrawPile = 0;
     for (int i = thisPlayerHand.length; i < gameState.handLimit; i++) {
       if (gameState.drawPile.length == 0) {
         minMovesPerTurn = END_MIN_MOVES_PER_TURN;
@@ -278,6 +280,7 @@ class _PlayerViewState extends State<GamePage> {
       }
       thisPlayerHand.add(gameState.drawPile.last);
       gameState.drawPile.removeLast();
+      numCardsToRemoveFromDrawPile++;
     }
     // Handle case where this player finishes and no cards in draw pile
     if (thisPlayerHand.length == 0 && gameState.drawPile == 0) {
@@ -285,8 +288,10 @@ class _PlayerViewState extends State<GamePage> {
         gameState.markPlayerAsDone(playerUid);
       });
     }
-    gameDatabaseService.writeGameState(gameState);
+    gameDatabaseService.removeCardFromDrawPileInDB(
+        numCardsToRemoveFromDrawPile, gameState.drawPile.length);
     thisPlayerHand.sort();
+    gameDatabaseService.updateThisPlayerHandInDB(thisPlayerHand);
     print(
         "drawCardsAtEndOfTurn: drawPile at end of turn = ${gameState.drawPile}");
     print(
@@ -296,10 +301,10 @@ class _PlayerViewState extends State<GamePage> {
   // Check if game ended, and write status to DB if yes
   void checkGameEndConditions() {
     if (isGameWon()) {
-      gameDatabaseService.updateGameStatus(GameStatusEnum.WON);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.WON);
       gameState.gameStatus = GameStatusEnum.WON;
     } else if (isGameLost()) {
-      gameDatabaseService.updateGameStatus(GameStatusEnum.LOST);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.LOST);
       gameState.gameStatus = GameStatusEnum.LOST;
     }
   }
@@ -407,8 +412,8 @@ class _PlayerViewState extends State<GamePage> {
         gameState.whoseTurn = playerUid;
         gameState.gameStatus = GameStatusEnum.PLAYING;
       });
-      gameDatabaseService.writeGameState(gameState);
-      gameDatabaseService.updateGameStatus(GameStatusEnum.PLAYING);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.PLAYING);
+      gameDatabaseService.updateWhoseTurnInDB(playerUid);
     } else {
       print("onThisPlayerStarterPressed: unsuccessful in starting game");
     }
@@ -674,7 +679,7 @@ class _PlayerViewState extends State<GamePage> {
     });
     // Check if game is over (new player has no valid moves)
     if (whoseTurn == playerUid && isGameLost()) {
-      gameDatabaseService.updateGameStatus(GameStatusEnum.LOST);
+      gameDatabaseService.updateGameStatusInDB(GameStatusEnum.LOST);
     }
   }
 
@@ -828,7 +833,7 @@ class _PlayerViewState extends State<GamePage> {
   void onExitConfirmed() {
     print("onExitConfirmed: started");
     gameDatabaseService.clearGameStateFromDB();
-    gameDatabaseService.updateGameStatus(GameStatusEnum.WAITING);
+    gameDatabaseService.updateGameStatusInDB(GameStatusEnum.WAITING);
     // TODO: update entire game state in DB
     Navigator.of(context).pop(true);
   }
