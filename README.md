@@ -1,16 +1,9 @@
-# the_game
+# The Game
 
-My version of "The Game"
+Digital version of "[The Game](https://pandasaurusgames.com/products/the-game-kwanchai-moriya-edition)"
 
-## Getting Started
+## To Play
 
-This project is a starting point for a Flutter application.
+You can play this game [the100game.web.app](https://the100game.web.app/)
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Rules and more info can be found at [boardgamegeek.com](https://boardgamegeek.com/boardgame/173090/game)
